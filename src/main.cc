@@ -469,12 +469,12 @@ int main(int argc, char **argv)
         free(model_data);
     }
 
-    for (int i = 0; i < 4; ++i)
-    {
-        if (inputs[i].buf)
-        {
-            free(inputs[i].buf);
-        }
-    }
+    // for (int i = 0; i < 4; ++i)
+    // {
+    //     if (inputs[i].buf)
+    //     {
+    //         free(inputs[i].buf);
+    //     }
+    // }
     return 0;
 }
