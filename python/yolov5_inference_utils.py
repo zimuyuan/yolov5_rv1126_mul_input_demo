@@ -34,22 +34,15 @@ def get_model_info():
     return conf_thres, iou_thres, label_names, masks, anchors
 
 
-# input 0.0~255 NHWC
 def tool_inference(tool, model, input, mul_inputs, preprocess=False):
 
     if mul_inputs:
-        print("mul input model")
-        # [1HWC] - > [1CWH] -> [4 * 1hwC]
+        # [1HWC] - > [1CWH] -> [4 * 1Cwh] -> [4 * 1hwC]
         input = np.transpose(input, (0, 3, 1, 2))
         input = split_mul_input(input, 16)
         input = [np.transpose(i, (0, 2, 3, 1)) for i in input]
     else:
-        print("single input model")
         input = [input]
-    if preprocess:
-        print("add preprocess layer")
-    else:
-        print("no preprocess layer")
 
     if tool == 'onnx':
         if not preprocess:
@@ -58,12 +51,13 @@ def tool_inference(tool, model, input, mul_inputs, preprocess=False):
         input = {model.get_inputs()[i].name: input[i] for i in range(len(input))}
         outputs = model.run(None, input)
     else:
+        input = [i.astype(np.uint8) for i in input]
+        # for idx, in_data in enumerate(input):
+        #     cv2.imwrite("py_crop_%d.bmp" % idx, in_data[0])
+        #     in_data.tofile('in_{}.tensor'.format(idx), '\n')
         # 0~255 NHWC
-        print(input[0].shape)
-        # 这里应该是要设置 inputs_pass_through = True 的,但是设置 True 反而不出框了
         inputs_pass_through = [preprocess] * len(input)
         outputs = model.inference(input, inputs_pass_through = inputs_pass_through)
-        # outputs = model.inference(inputs=input)
     return outputs
 
 
@@ -109,7 +103,6 @@ def yolov5_model_inference(tool, model, net_input_size, mul_inputs = False, prep
 
         outputs_data = list()
         for output in outputs:
-            # print(out.shape)
             if SIMPLE_NET:
                 # [255 20 20] -> [3 85 20 20] -> [20 20 3 85]
                 output = output.reshape([len(masks[0]), -1]+list(output.shape[-2:]))
@@ -117,7 +110,6 @@ def yolov5_model_inference(tool, model, net_input_size, mul_inputs = False, prep
             else:
                 # [3 20 20 85] -> [20 20 3 85]
                 output = np.transpose(output, (1, 2, 0, 3))
-            # print(out.shape)
             outputs_data.append(output)
         boxes, classes, scores = post_process(outputs_data, anchors, masks, net_input_size[:2], pad_left, pad_top, ratio, conf_thres, iou_thres)
         if boxes is None:

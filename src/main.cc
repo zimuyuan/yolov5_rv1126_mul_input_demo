@@ -157,6 +157,59 @@ static int saveFloat(const char *file_name, float *output, int element_size)
     return 0;
 }
 
+static int saveuint8(const char *file_name, u_int8_t* savebuf, int element_size)
+{
+    FILE *fp;
+    fp = fopen(file_name, "w");
+    for (int i = 0; i < element_size; i++)
+    {
+        fprintf(fp, "%hhu\n", savebuf[i]);
+    }
+    fclose(fp);
+    return 0;
+}
+
+
+static uint8_t *ReadTensorData
+    (
+    const char *name,
+    uint32_t width,
+    uint32_t height,
+    uint32_t channels
+    )
+{
+    uint8_t *tensorData;
+    FILE *tensorFile;
+    int ival = 0.0;
+    uint32_t   sz;
+
+    tensorData = NULL;
+    tensorFile = fopen(name, "rb");
+
+    sz = width * height * channels;
+
+    tensorData = (uint8_t *)malloc(sz * sizeof(uint8_t));
+    memset(tensorData, 0, sz);
+
+    for(int i = 0; i < sz; i++)
+    {
+        if(fscanf( tensorFile, "%d ", &ival ) != 1)
+        {
+            printf("Read tensor file fail.\n");
+            printf("Please check file lines or if the file contains illegal characters\n");
+            goto final;
+        }
+        // memcpy(tensorData + i, (uint8_t)(ival), 1);
+        tensorData[i] = (uint8_t)ival;
+    }
+
+    if(tensorFile)fclose(tensorFile);
+    return tensorData;
+final:
+    if(tensorFile)fclose(tensorFile);
+    return NULL;
+}
+
 
 /*-------------------------------------------
                   Main Functions
@@ -198,14 +251,15 @@ int main(int argc, char **argv)
     int preprcess_layer = atoi(argv[3]);
 
     printf("Read %s ...\n", image_name);
-    cv::Mat orig_img = cv::imread(image_name, 1);
+    cv::Mat orig_img = cv::imread(image_name, cv::IMREAD_COLOR);
     if (!orig_img.data)
     {
         printf("cv::imread %s fail!\n", image_name);
         return -1;
     }
-    cv::Mat img;
-    cv::cvtColor(orig_img, img, cv::COLOR_BGR2RGB);
+    cv::Mat img = cv::Mat(orig_img);
+
+    // cv::cvtColor(orig_img, img, cv::COLOR_BGR2RGB);
     img_width = img.cols;
     img_height = img.rows;
     printf("img width = %d, height = %d, channel=%d\n", img_width, img_height, img.channels());
@@ -291,9 +345,9 @@ int main(int argc, char **argv)
     for (int i = 0; i < io_num.n_input; i++)
     {
         memset(inputs + i, 0, sizeof(inputs[i]));
-        inputs[i].index = 0;
+        inputs[i].index = i;
         inputs[i].type = RKNN_TENSOR_UINT8;
-        inputs[i].size = real_input_width * real_input_height * real_input_channel;
+        inputs[i].size = real_input_width * real_input_height * 3;
         inputs[i].fmt = RKNN_TENSOR_NHWC;
         inputs[i].pass_through = preprcess_layer;
     }
@@ -303,14 +357,29 @@ int main(int argc, char **argv)
         int w = real_input_width;
         int h = real_input_height;
         // // start_x start_y w h
-        cv::Mat ROI0(img, cv::Rect(0, 0, w, h));
-        cv::Mat ROI1(img, cv::Rect(w - 32, 0, w, h));
-        cv::Mat ROI2(img, cv::Rect(0, h - 32, w, h));
-        cv::Mat ROI3(img, cv::Rect(w - 32, h - 32, w, h));
+        cv::Mat ROI0 = cv::Mat(img, cv::Rect(0, 0, w, h)).clone();
+        cv::Mat ROI1 = cv::Mat(img, cv::Rect(w - 32, 0, w, h)).clone();
+        cv::Mat ROI2 = cv::Mat(img, cv::Rect(0, h - 32, w, h)).clone();
+        cv::Mat ROI3 = cv::Mat(img, cv::Rect(w - 32, h - 32, w, h)).clone();
         inputs[0].buf = ROI0.data;
         inputs[1].buf = ROI1.data;
         inputs[2].buf = ROI2.data;
         inputs[3].buf = ROI3.data;
+        
+        // saveuint8("images/cv_in_0.tensor", (u_int8_t*)inputs[0].buf, inputs[0].size);
+        // saveuint8("images/cv_in_1.tensor", (u_int8_t*)inputs[1].buf, inputs[1].size);
+        // saveuint8("images/cv_in_2.tensor", (u_int8_t*)inputs[2].buf, inputs[2].size);
+        // saveuint8("images/cv_in_3.tensor", (u_int8_t*)inputs[3].buf, inputs[3].size);
+        
+        // cv::imwrite("images/roi_0.bmp", ROI0);
+        // cv::imwrite("images/roi_1.bmp", ROI1);
+        // cv::imwrite("images/roi_2.bmp", ROI2);
+        // cv::imwrite("images/roi_3.bmp", ROI3);
+        // printf("read data form tensor.\n");
+        // inputs[0].buf = ReadTensorData("images/in_0.tensor", real_input_width, real_input_height, 3);
+        // inputs[1].buf = ReadTensorData("images/in_1.tensor", real_input_width, real_input_height, 3);
+        // inputs[2].buf = ReadTensorData("images/in_2.tensor", real_input_width, real_input_height, 3);
+        // inputs[3].buf = ReadTensorData("images/in_3.tensor", real_input_width, real_input_height, 3);
     }
     else
     {
@@ -400,5 +469,12 @@ int main(int argc, char **argv)
         free(model_data);
     }
 
+    for (int i = 0; i < 4; ++i)
+    {
+        if (inputs[i].buf)
+        {
+            free(inputs[i].buf);
+        }
+    }
     return 0;
 }

@@ -51,9 +51,7 @@ find_package(OpenCV REQUIRED)
 `python yolov5_inference.py --format=rknn --model_path=../model/preprocess_single_input/ --preprocess`
 
 - 多输入加预处理层的 rknn 模型
-`python yolov5_inference.py --format=rknn --model_path=../model/preprocess_single_input/ --preprocess`
-
-- 结果说明
+`python yolov5_inference.py --format=rknn --model_path=../model/preprocess_mul_input/ --preprocess --mul_input`
 
 
 ### onnxruntime 推理 onnx 模型
@@ -66,12 +64,3 @@ find_package(OpenCV REQUIRED)
 `python yolov5_inference.py --format=onnx  --model_path=../model/preprocess_single_input/ --preprocess`
 - 多输入加预处理层的 onnx 模型
 `python yolov5_inference.py --format=onnx --model_path=../model/preprocess_mul_input/ --preprocess --mul_input`
-
-## 结果说明
-1. 单输入的 rknn 模型都能推理出结果,多输入的 rknn 模型都不能推理结果
-2. 没加预处理层的 rknn 模型都能出结果,加了预处理层的rknn模型都不能出结果, 是不是python 端的 inputs_pass_through 没有生效
-3. onnx 模型的推理都能正常出结果
-
-- 从结果 3 来看所有模型的 onnx 格式都是没有问题的，如果推理没有问题出在模型,那应该是导出 rknn 时参数设置不对了
-- 1 的结果过说明添加的预处理层也没问题
-- 2 的结果又说明分割多输入模型没问题

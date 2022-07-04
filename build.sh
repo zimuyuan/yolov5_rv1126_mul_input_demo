@@ -30,7 +30,7 @@ make install
 cd -
 
 # cp run_rv1109_rv1126.sh install/rknn_yolov5_demo/
-# cp images install/rknn_yolov5_demo/ -r
+cp images install/rknn_yolov5_demo/ -r
 
 TARGER_CHIP=rv1126
 # scp -r install/rknn_yolov5_demo/ codedetector${TARGER_CHIP}:~/test/
